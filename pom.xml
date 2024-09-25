@@ -22,36 +22,39 @@
   </properties>
 
   <dependencies>
+    <!-- Spring Boot Starter: inclui configuracoes essenciais -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter</artifactId>
     </dependency>
-    <!-- Spring Boot Web par a API REST -->
+
+    <!-- Spring Boot Web para API REST -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
 
-    <!-- Spring Boot JPA para integracao com o banco de dados -->
+    <!-- Spring Boot JPA para integracao com banco de dados -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>
     </dependency>
 
-    <!-- banco de dados H2 em memoria -->
+    <!-- Banco de dados H2 em memoria -->
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
       <scope>runtime</scope>
     </dependency>
 
-    <!-- OpenCSV para leitura do CSV -->
+    <!-- OpenCSV para leitura de arquivos CSV -->
     <dependency>
       <groupId>com.opencsv</groupId>
       <artifactId>opencsv</artifactId>
       <version>5.5.2</version>
     </dependency>
 
+    <!-- Testes com Spring Boot (inclui JUnit 5) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

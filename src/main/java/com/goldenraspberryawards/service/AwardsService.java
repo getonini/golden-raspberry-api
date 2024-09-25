@@ -5,6 +5,8 @@ import com.goldenraspberryawards.dto.AwardIntervalResponse;
 import com.goldenraspberryawards.model.Movie;
 import com.goldenraspberryawards.repository.MovieRepository;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,12 +18,15 @@ import java.util.*;
 @Service
 public class AwardsService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AwardsService.class);
+
     @Autowired
     private MovieRepository repository;
 
     @PostConstruct
     public void loadMoviesFromCsv() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("src/main/resources/movielist_(13).csv"))) {
+        String filePath = "src/main/resources/movielist_(13).csv";
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
             reader.readLine(); // Ignorar a primeira linha (cabecalho)
             while ((line = reader.readLine()) != null) {
@@ -29,7 +34,7 @@ public class AwardsService {
 
                 // Garantir que temos pelo menos as 4 primeiras colunas (ano, titulo, estudios, produtores)
                 if (columns.length < 4) {
-                    System.out.println("Linha invalida ou incompleta: " + line);
+                    logger.warn("Linha invalida ou incompleta: {}", line);
                     continue;  // Ignorar linhas incompletas
                 }
 
@@ -37,7 +42,7 @@ public class AwardsService {
                 try {
                     year = Integer.parseInt(columns[0]);  // Garantir que o campo 'year' seja valido
                 } catch (NumberFormatException e) {
-                    System.out.println("Ano invalido na linha: " + line);
+                    logger.warn("Ano invalido na linha: {}", line);
                     continue;  // Ignorar linhas com ano invalido
                 }
 
@@ -51,7 +56,7 @@ public class AwardsService {
                 for (String producer : producers.split(", ")) {
                     producer = producer.trim();  // Remover espacos extras
 
-                    if (!producer.isEmpty()) {  // Validar se o produtor não esta vazio
+                    if (!producer.isEmpty()) {  // Validar se o produtor nao esta vazio
                         Movie movie = new Movie();
                         movie.setReleaseYear(year);
                         movie.setTitle(title);
@@ -62,16 +67,19 @@ public class AwardsService {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Erro ao carregar arquivo CSV {}: {}", filePath, e.getMessage());
         }
     }
     public AwardIntervalResponse calculateAwardIntervals() {
         List<Movie> winners = repository.findByWinnerTrue();
         Map<String, List<Integer>> producerWins = new HashMap<>();
 
-        // Agrupar anos de vitória por produtor
+        // Agrupar anos de vitoria por produtor, considerando multiplos produtores por filme
         for (Movie movie : winners) {
-            producerWins.computeIfAbsent(movie.getProducer(), k -> new ArrayList<>()).add(movie.getReleaseYear());
+            String[] producers = movie.getProducer().split(" and ");  // Separar produtores
+            for (String producer : producers) {
+                producerWins.computeIfAbsent(producer.trim(), k -> new ArrayList<>()).add(movie.getReleaseYear());
+            }
         }
 
         List<AwardInterval> minIntervals = new ArrayList<>();
@@ -79,25 +87,26 @@ public class AwardsService {
 
         // Processar intervalos para cada produtor
         for (Map.Entry<String, List<Integer>> entry : producerWins.entrySet()) {
-            if (entry.getValue().size() > 1) {  // Apenas processar produtores com mais de uma vitória
+            if (entry.getValue().size() > 1) {  // Apenas processar produtores com mais de uma vitoria
                 processProducerIntervals(entry.getKey(), entry.getValue(), minIntervals, maxIntervals);
             }
         }
 
-        // Retornar os produtores com menores e maiores intervalos sem duplicação
+        // Retornar os produtores com menores e maiores intervalos
         return new AwardIntervalResponse(minIntervals, maxIntervals);
     }
+
     private void processProducerIntervals(String producer, List<Integer> winYears,
                                           List<AwardInterval> minIntervals,
                                           List<AwardInterval> maxIntervals) {
-        Collections.sort(winYears);  // Ordenar os anos de vitória
+        Collections.sort(winYears);  // Ordenar os anos de vitoria
 
         int minInterval = Integer.MAX_VALUE;
         int maxInterval = Integer.MIN_VALUE;
         AwardInterval minIntervalRecord = null;
         AwardInterval maxIntervalRecord = null;
 
-        // Percorrer os anos de vitória e calcular os intervalos
+        // Percorrer os anos de vitoria e calcular os intervalos
         for (int i = 1; i < winYears.size(); i++) {
             int interval = winYears.get(i) - winYears.get(i - 1);
             int previousWin = winYears.get(i - 1);
@@ -116,23 +125,23 @@ public class AwardsService {
             }
         }
 
-        // Atualizar lista de mínimos intervalos
+        // Atualizar lista de minimos intervalos
         if (minIntervalRecord != null) {
             if (minIntervals.isEmpty() || minIntervalRecord.getInterval() < minIntervals.get(0).getInterval()) {
-                minIntervals.clear();
+                minIntervals.clear();  // Limpar se encontrar um intervalo menor
                 minIntervals.add(minIntervalRecord);
             } else if (minIntervalRecord.getInterval() == minIntervals.get(0).getInterval()) {
-                minIntervals.add(minIntervalRecord);
+                minIntervals.add(minIntervalRecord);  // Adicionar se o intervalo for igual
             }
         }
 
-        // Atualizar lista de máximos intervalos
+        // Atualizar lista de maximos intervalos
         if (maxIntervalRecord != null) {
             if (maxIntervals.isEmpty() || maxIntervalRecord.getInterval() > maxIntervals.get(0).getInterval()) {
-                maxIntervals.clear();
+                maxIntervals.clear();  // Limpar se encontrar um intervalo maior
                 maxIntervals.add(maxIntervalRecord);
             } else if (maxIntervalRecord.getInterval() == maxIntervals.get(0).getInterval()) {
-                maxIntervals.add(maxIntervalRecord);
+                maxIntervals.add(maxIntervalRecord);  // Adicionar se o intervalo for igual
             }
         }
     }
